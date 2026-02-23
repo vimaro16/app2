@@ -25,6 +25,9 @@ export default function SponsorPage() {
   const [earnings, setEarnings] = useState([]);
   const [weeklySummary, setWeeklySummary] = useState(null);
   const [paymentRequests, setPaymentRequests] = useState([]);
+  const [earningsByRaffle, setEarningsByRaffle] = useState([]);
+  const [earningsByWeek, setEarningsByWeek] = useState([]);
+  const [earningsByMonth, setEarningsByMonth] = useState([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
