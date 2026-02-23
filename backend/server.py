@@ -1826,16 +1826,6 @@ async def update_frontend_content(content_data: FrontendContentUpdate, admin: di
     
     return {"message": "Contenido actualizado exitosamente"}
 
-                "sponsor_name": user["full_name"],
-                "whatsapp": user["whatsapp"],
-                "total_pending": item["total_pending"],
-                "sales_count": item["sales_count"],
-                "whatsapp_url": whatsapp_url,
-                "message": message
-            })
-    
-    return {"week": current_week, "messages": messages}
-
 # Include router and middleware
 app.include_router(api_router)
 
