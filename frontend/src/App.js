@@ -1,9 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { FrontendContentProvider } from "./context/FrontendContentContext";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DashboardPage from "./pages/DashboardPage";
 import RafflePage from "./pages/RafflePage";
 import AdminPage from "./pages/AdminPage";
@@ -41,43 +44,47 @@ const ProtectedRoute = ({ children, requireAdmin = false, requireEditor = false 
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <div className="App min-h-screen bg-background">
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/blog" element={<BlogPage />} />
-            <Route path="/raffle/:id" element={<RafflePage />} />
-            <Route path="/payment/success" element={<PaymentSuccessPage />} />
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/sponsor" 
-              element={
-                <ProtectedRoute>
-                  <SponsorPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/admin/*" 
-              element={
-                <ProtectedRoute requireAdmin>
-                  <AdminPage />
-                </ProtectedRoute>
-              } 
-            />
-          </Routes>
-          <Toaster position="top-right" richColors />
-        </div>
-      </BrowserRouter>
+      <FrontendContentProvider>
+        <BrowserRouter>
+          <div className="App min-h-screen bg-background">
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/blog" element={<BlogPage />} />
+              <Route path="/raffle/:id" element={<RafflePage />} />
+              <Route path="/payment/success" element={<PaymentSuccessPage />} />
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/sponsor" 
+                element={
+                  <ProtectedRoute>
+                    <SponsorPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/admin/*" 
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminPage />
+                  </ProtectedRoute>
+                } 
+              />
+            </Routes>
+            <Toaster position="top-right" richColors />
+          </div>
+        </BrowserRouter>
+      </FrontendContentProvider>
     </AuthProvider>
   );
 }
