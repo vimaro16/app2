@@ -256,6 +256,18 @@ export default function RafflePage() {
                   </div>
                 </CardContent>
               </Card>
+              
+              {/* Share Button */}
+              {user && raffle.status === "active" && (
+                <div className="mt-4">
+                  <ShareRaffleButton raffleId={id} />
+                </div>
+              )}
+
+              {/* Top Buyer Card */}
+              <div className="mt-4">
+                <TopBuyerCard raffleId={id} />
+              </div>
             </motion.div>
           </div>
 
