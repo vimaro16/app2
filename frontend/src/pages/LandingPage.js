@@ -165,8 +165,8 @@ export default function LandingPage() {
             className="relative hidden md:block"
           >
             <img 
-              src="https://images.pexels.com/photos/6612233/pexels-photo-6612233.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
-              alt="Persona feliz ganando"
+              src={content.hero_image_url}
+              alt="Hero"
               className="rounded-2xl shadow-2xl w-full object-cover max-h-[400px]"
             />
             <div className="absolute -bottom-6 -left-6 bg-white text-trust-blue p-4 rounded-xl shadow-xl">
