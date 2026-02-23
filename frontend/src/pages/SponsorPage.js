@@ -51,16 +51,23 @@ export default function SponsorPage() {
 
   const fetchSponsorData = async () => {
     try {
-      const [statsRes, earningsRes, weeklyRes, requestsRes] = await Promise.all([
-        axios.get(`${API_URL}/sponsor/my-code`),
-        axios.get(`${API_URL}/sponsor/my-earnings`),
-        axios.get(`${API_URL}/sponsor/my-weekly-summary`),
-        axios.get(`${API_URL}/sponsor/my-payment-requests`)
+      const token = localStorage.getItem("token");
+      const [statsRes, earningsRes, weeklyRes, requestsRes, raffleRes, weekRes, monthRes] = await Promise.all([
+        axios.get(`${API_URL}/sponsor/my-code`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/sponsor/my-earnings`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/sponsor/my-weekly-summary`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/sponsor/my-payment-requests`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/sponsor/earnings-by-raffle`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/sponsor/earnings-by-week`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API_URL}/sponsor/earnings-by-month`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
       setStats(statsRes.data);
       setEarnings(earningsRes.data);
       setWeeklySummary(weeklyRes.data);
       setPaymentRequests(requestsRes.data);
+      setEarningsByRaffle(raffleRes.data);
+      setEarningsByWeek(weekRes.data);
+      setEarningsByMonth(monthRes.data);
       
       // Pre-fill amount with total pending
       if (weeklyRes.data.total_pending > 0) {
