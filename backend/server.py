@@ -2045,10 +2045,6 @@ async def get_sponsor_dashboard_stats(user: dict = Depends(get_current_user)):
         "top_raffles": top_raffles_data
     }
 
-    }
-    
-    return links
-
 # Include router and middleware
 app.include_router(api_router)
 
