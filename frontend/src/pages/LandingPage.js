@@ -143,7 +143,7 @@ export default function LandingPage() {
                   size="lg" 
                   className="w-full sm:w-auto bg-luck-red hover:bg-luck-red/90 text-white font-barlow font-black text-lg uppercase tracking-widest rounded-full px-8 py-6 shadow-luck animate-pulse-slow"
                 >
-                  Participar Ahora <ArrowRight className="ml-2 w-5 h-5" />
+                  {content.hero_button_text} <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
               <Link to="/blog">
