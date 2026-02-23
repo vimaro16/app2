@@ -1405,6 +1405,9 @@ export default function AdminPage() {
             <Route path="raffles" element={<RafflesManagement />} />
             <Route path="payments" element={<PaymentsManagement />} />
             <Route path="sponsors" element={<SponsorsManagement />} />
+            <Route path="withdrawals" element={<WithdrawalsManagement />} />
+            <Route path="reports" element={<ReportsPage />} />
+            <Route path="content" element={<ContentEditorPage />} />
             <Route path="payment-methods" element={<PaymentMethodsManagement />} />
             <Route path="whatsapp" element={<WhatsAppConfig />} />
           </Routes>
