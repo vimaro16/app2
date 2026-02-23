@@ -22,7 +22,42 @@
         Learn how to configure a non-root public URL by running `npm run build`.
         -->
         <title>Emergent | Fullstack App</title>
-        <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
+        <script>
+            // Global error handler for common extension conflicts
+            window.addEventListener("error", function(e) {
+                // Handle DataCloneError from performance timing
+                if (e.error instanceof DOMException && 
+                    e.error.name === "DataCloneError" && 
+                    e.message && 
+                    e.message.includes("PerformanceServerTiming")) {
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                }
+                
+                // Handle MetaMask connection errors
+                if (e.message && (
+                    e.message.includes("MetaMask") || 
+                    e.message.includes("ethereum") ||
+                    e.message.includes("chrome-extension")
+                )) {
+                    console.warn("Browser extension conflict detected (safe to ignore):", e.message);
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                }
+            }, true);
+            
+            // Handle unhandled promise rejections from extensions
+            window.addEventListener("unhandledrejection", function(e) {
+                if (e.reason && e.reason.message && (
+                    e.reason.message.includes("MetaMask") ||
+                    e.reason.message.includes("ethereum") ||
+                    e.reason.message.includes("chrome-extension")
+                )) {
+                    console.warn("Browser extension conflict detected (safe to ignore):", e.reason.message);
+                    e.preventDefault();
+                }
+            });
+        </script>
         <script src="https://assets.emergent.sh/scripts/emergent-main.js"></script>
         <!--
         These two scripts have been added for the Visual Edits, please do not edit or remove them
