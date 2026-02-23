@@ -1826,6 +1826,41 @@ async def update_frontend_content(content_data: FrontendContentUpdate, admin: di
     
     return {"message": "Contenido actualizado exitosamente"}
 
+
+
+# ============ SOCIAL SHARING WITH SPONSOR CODE ============
+@api_router.get("/raffles/{raffle_id}/share")
+async def get_share_links(raffle_id: str, user: dict = Depends(get_current_user)):
+    """Generate social media sharing links with sponsor code"""
+    raffle = await db.raffles.find_one({"id": raffle_id}, {"_id": 0})
+    if not raffle:
+        raise HTTPException(status_code=404, detail="Rifa no encontrada")
+    
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://ventana-proyecto.preview.emergentagent.com')
+    sponsor_code = user.get("sponsor_code", "")
+    
+    # Build share URL with sponsor code
+    share_url = f"{frontend_url}/raffle/{raffle_id}?sponsor={sponsor_code}"
+    
+    # Build share text
+    share_text = f"🎰 ¡Participa en la rifa {raffle['title']}! Solo ${raffle['slot_price']} por número. Usa mi código: {sponsor_code}"
+    
+    import urllib.parse
+    encoded_url = urllib.parse.quote(share_url)
+    encoded_text = urllib.parse.quote(share_text)
+    
+    # Generate social media links
+    links = {
+        "facebook": f"https://www.facebook.com/sharer/sharer.php?u={encoded_url}",
+        "twitter": f"https://twitter.com/intent/tweet?text={encoded_text}&url={encoded_url}",
+        "whatsapp": f"https://wa.me/?text={encoded_text}%20{encoded_url}",
+        "telegram": f"https://t.me/share/url?url={encoded_url}&text={encoded_text}",
+        "copy_link": share_url,
+        "sponsor_code": sponsor_code
+    }
+    
+    return links
+
 # Include router and middleware
 app.include_router(api_router)
 
