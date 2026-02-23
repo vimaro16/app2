@@ -1857,7 +1857,9 @@ async def get_share_links(raffle_id: str, user: dict = Depends(get_current_user)
         "telegram": f"https://t.me/share/url?url={encoded_url}&text={encoded_text}",
         "copy_link": share_url,
         "sponsor_code": sponsor_code
-
+    }
+    
+    return links
 
 # ============ ADVANCED SPONSOR METRICS ============
 @api_router.get("/sponsor/earnings-by-raffle")
