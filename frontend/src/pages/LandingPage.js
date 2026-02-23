@@ -201,7 +201,10 @@ export default function LandingPage() {
                 <Card className="h-full border-0 shadow-trust hover:shadow-xl transition-all hover:-translate-y-1">
                   <CardContent className="p-6 text-center">
                     <div className="w-12 h-12 bg-trust-blue/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <feature.icon className="w-6 h-6 text-trust-blue" />
+                      {(() => {
+                        const Icon = featureIcons[index];
+                        return <Icon className="w-6 h-6 text-trust-blue" />;
+                      })()}
                     </div>
                     <h3 className="font-barlow font-bold text-lg mb-2">{feature.title}</h3>
                     <p className="text-sm text-slate-600">{feature.desc}</p>
