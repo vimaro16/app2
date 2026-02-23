@@ -44,9 +44,13 @@ export default function LandingPage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-trust-blue rounded-full flex items-center justify-center">
-              <Trophy className="w-5 h-5 text-white" />
-            </div>
+            {content.logo_url ? (
+              <img src={content.logo_url} alt="Logo" className="w-10 h-10 rounded-full object-cover" />
+            ) : (
+              <div className="w-10 h-10 bg-trust-blue rounded-full flex items-center justify-center">
+                <Trophy className="w-5 h-5 text-white" />
+              </div>
+            )}
             <span className="font-barlow font-bold text-xl text-trust-blue uppercase tracking-wider">SuerteApp</span>
           </Link>
           
@@ -127,12 +131,10 @@ export default function LandingPage() {
             transition={{ duration: 0.5 }}
           >
             <h1 className="font-barlow font-black text-4xl sm:text-5xl lg:text-6xl uppercase tracking-tight mb-4 leading-tight">
-              Tu Suerte <br />
-              <span className="text-win-gold">Comienza Aquí</span>
+              {content.hero_title}
             </h1>
             <p className="text-lg md:text-xl text-blue-100 mb-8 font-lato leading-relaxed">
-              Participa en rifas emocionantes con premios increíbles. 
-              Elige tus números de la suerte y gana desde tu móvil.
+              {content.hero_subtitle}
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link to={user ? "/dashboard" : "/register"}>
