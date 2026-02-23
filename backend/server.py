@@ -1857,6 +1857,192 @@ async def get_share_links(raffle_id: str, user: dict = Depends(get_current_user)
         "telegram": f"https://t.me/share/url?url={encoded_url}&text={encoded_text}",
         "copy_link": share_url,
         "sponsor_code": sponsor_code
+
+
+# ============ ADVANCED SPONSOR METRICS ============
+@api_router.get("/sponsor/earnings-by-raffle")
+async def get_earnings_by_raffle(user: dict = Depends(get_current_user)):
+    """Get sponsor earnings grouped by raffle"""
+    pipeline = [
+        {"$match": {"sponsor_id": user["id"]}},
+        {"$group": {
+            "_id": "$raffle_id",
+            "total_earnings": {"$sum": "$commission_amount"},
+            "sales_count": {"$sum": 1},
+            "pending": {"$sum": {"$cond": [{"$eq": ["$status", "pending"]}, "$commission_amount", 0]}},
+            "paid": {"$sum": {"$cond": [{"$eq": ["$status", "paid"]}, "$commission_amount", 0]}}
+        }}
+    ]
+    
+    results = await db.sponsor_earnings.aggregate(pipeline).to_list(100)
+    
+    # Enrich with raffle details
+    enriched_results = []
+    for item in results:
+        raffle = await db.raffles.find_one({"id": item["_id"]}, {"_id": 0})
+        if raffle:
+            enriched_results.append({
+                "raffle_id": item["_id"],
+                "raffle_title": raffle["title"],
+                "raffle_image": raffle.get("image_url"),
+                "total_earnings": item["total_earnings"],
+                "pending_earnings": item["pending"],
+                "paid_earnings": item["paid"],
+                "sales_count": item["sales_count"]
+            })
+    
+    return enriched_results
+
+@api_router.get("/sponsor/earnings-by-week")
+async def get_earnings_by_week(user: dict = Depends(get_current_user)):
+    """Get sponsor earnings grouped by week"""
+    pipeline = [
+        {"$match": {"sponsor_id": user["id"]}},
+        {"$group": {
+            "_id": "$week_year",
+            "total_earnings": {"$sum": "$commission_amount"},
+            "sales_count": {"$sum": 1},
+            "pending": {"$sum": {"$cond": [{"$eq": ["$status", "pending"]}, "$commission_amount", 0]}},
+            "paid": {"$sum": {"$cond": [{"$eq": ["$status", "paid"]}, "$commission_amount", 0]}}
+        }},
+        {"$sort": {"_id": -1}},
+        {"$limit": 12}
+    ]
+    
+    results = await db.sponsor_earnings.aggregate(pipeline).to_list(12)
+    
+    return [{
+        "week": item["_id"],
+        "total_earnings": item["total_earnings"],
+        "pending_earnings": item["pending"],
+        "paid_earnings": item["paid"],
+        "sales_count": item["sales_count"]
+    } for item in results]
+
+@api_router.get("/sponsor/earnings-by-month")
+async def get_earnings_by_month(user: dict = Depends(get_current_user)):
+    """Get sponsor earnings grouped by month"""
+    earnings = await db.sponsor_earnings.find(
+        {"sponsor_id": user["id"]},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    # Group by month
+    month_data = {}
+    for earning in earnings:
+        created = datetime.fromisoformat(earning["created_at"])
+        month_key = created.strftime("%Y-%m")
+        
+        if month_key not in month_data:
+            month_data[month_key] = {
+                "total_earnings": 0,
+                "pending_earnings": 0,
+                "paid_earnings": 0,
+                "sales_count": 0
+            }
+        
+        month_data[month_key]["total_earnings"] += earning["commission_amount"]
+        month_data[month_key]["sales_count"] += 1
+        
+        if earning["status"] == "pending":
+            month_data[month_key]["pending_earnings"] += earning["commission_amount"]
+        elif earning["status"] == "paid":
+            month_data[month_key]["paid_earnings"] += earning["commission_amount"]
+    
+    # Convert to list and sort
+    results = [{"month": k, **v} for k, v in month_data.items()]
+    results.sort(key=lambda x: x["month"], reverse=True)
+    
+    return results[:12]  # Last 12 months
+
+@api_router.get("/raffles/{raffle_id}/top-buyer")
+async def get_raffle_top_buyer(raffle_id: str):
+    """Get the user/sponsor with most paid slots in a raffle"""
+    raffle = await db.raffles.find_one({"id": raffle_id}, {"_id": 0})
+    if not raffle:
+        raise HTTPException(status_code=404, detail="Rifa no encontrada")
+    
+    # Get all completed transactions for this raffle
+    transactions = await db.payment_transactions.find(
+        {"raffle_id": raffle_id, "status": PaymentStatus.COMPLETED},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    if not transactions:
+        return None
+    
+    # Count slots per user
+    user_slots = {}
+    for txn in transactions:
+        user_id = txn["user_id"]
+        slot_count = len(txn["slot_numbers"])
+        user_slots[user_id] = user_slots.get(user_id, 0) + slot_count
+    
+    # Find top buyer
+    top_user_id = max(user_slots, key=user_slots.get)
+    top_user = await db.users.find_one({"id": top_user_id}, {"_id": 0, "password": 0})
+    
+    if not top_user:
+        return None
+    
+    return {
+        "user_id": top_user_id,
+        "user_name": top_user["full_name"],
+        "sponsor_code": top_user.get("sponsor_code"),
+        "total_slots": user_slots[top_user_id],
+        "total_spent": user_slots[top_user_id] * raffle["slot_price"]
+    }
+
+@api_router.get("/sponsor/dashboard-stats")
+async def get_sponsor_dashboard_stats(user: dict = Depends(get_current_user)):
+    """Get comprehensive dashboard stats for sponsor"""
+    # Get all earnings
+    earnings = await db.sponsor_earnings.find(
+        {"sponsor_id": user["id"]},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    total_earnings = sum(e["commission_amount"] for e in earnings)
+    pending_earnings = sum(e["commission_amount"] for e in earnings if e["status"] == "pending")
+    paid_earnings = sum(e["commission_amount"] for e in earnings if e["status"] == "paid")
+    
+    # Get current month earnings
+    current_month = datetime.now(timezone.utc).strftime("%Y-%m")
+    month_earnings = [e for e in earnings if e["created_at"].startswith(current_month)]
+    month_total = sum(e["commission_amount"] for e in month_earnings)
+    
+    # Get referred users
+    referred_users = await db.users.count_documents({"referred_by": user["id"]})
+    
+    # Get top 3 raffles by earnings
+    raffle_earnings = {}
+    for earning in earnings:
+        raffle_id = earning["raffle_id"]
+        raffle_earnings[raffle_id] = raffle_earnings.get(raffle_id, 0) + earning["commission_amount"]
+    
+    top_raffles = sorted(raffle_earnings.items(), key=lambda x: x[1], reverse=True)[:3]
+    top_raffles_data = []
+    for raffle_id, total in top_raffles:
+        raffle = await db.raffles.find_one({"id": raffle_id}, {"_id": 0})
+        if raffle:
+            top_raffles_data.append({
+                "raffle_title": raffle["title"],
+                "raffle_image": raffle.get("image_url"),
+                "earnings": total
+            })
+    
+    return {
+        "total_earnings": total_earnings,
+        "pending_earnings": pending_earnings,
+        "paid_earnings": paid_earnings,
+        "month_earnings": month_total,
+        "total_sales": len(earnings),
+        "referred_users": referred_users,
+        "sponsor_code": user.get("sponsor_code"),
+        "commission_rate": SPONSOR_COMMISSION_RATE * 100,
+        "top_raffles": top_raffles_data
+    }
+
     }
     
     return links
