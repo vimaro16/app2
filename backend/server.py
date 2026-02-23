@@ -1231,7 +1231,15 @@ Gracias por ser parte de {business_name}. 💙"""
             
             messages.append({
                 "sponsor_id": user["id"],
-
+                "sponsor_name": user["full_name"],
+                "whatsapp": user["whatsapp"],
+                "total_pending": item["total_pending"],
+                "sales_count": item["sales_count"],
+                "whatsapp_url": whatsapp_url,
+                "message": message
+            })
+    
+    return {"week": current_week, "messages": messages}
 
 # ============ PASSWORD RECOVERY ============
 class ForgotPasswordRequest(BaseModel):
