@@ -22,6 +22,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
+import ReportsPage from "./ReportsPage";
+import ContentEditorPage from "./ContentEditorPage";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 
