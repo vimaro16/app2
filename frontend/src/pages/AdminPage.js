@@ -183,6 +183,15 @@ const DashboardOverview = () => {
 const UsersManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editForm, setEditForm] = useState({
+    full_name: "",
+    email: "",
+    whatsapp: "",
+    cedula: "",
+    role: "user"
+  });
   
   useEffect(() => {
     fetchUsers();
@@ -201,17 +210,50 @@ const UsersManagement = () => {
   
   const updateRole = async (userId, newRole) => {
     try {
-      await axios.put(`${API_URL}/users/${userId}/role`, { role: newRole });
+      const token = localStorage.getItem("token");
+      await axios.put(`${API_URL}/users/${userId}/role`, { role: newRole }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       toast.success("Rol actualizado");
       fetchUsers();
     } catch (error) {
       toast.error("Error al actualizar rol");
     }
   };
+
+  const openEditDialog = (user) => {
+    setEditingUser(user);
+    setEditForm({
+      full_name: user.full_name,
+      email: user.email,
+      whatsapp: user.whatsapp,
+      cedula: user.cedula,
+      role: user.role
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`${API_URL}/users/${editingUser.id}`, editForm, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      toast.success("Usuario actualizado exitosamente");
+      setShowEditDialog(false);
+      fetchUsers();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Error al actualizar usuario");
+    }
+  };
   
   const deleteUser = async (userId) => {
     try {
-      await axios.delete(`${API_URL}/users/${userId}`);
+      const token = localStorage.getItem("token");
+      await axios.delete(`${API_URL}/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       toast.success("Usuario eliminado");
       fetchUsers();
     } catch (error) {
