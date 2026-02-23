@@ -4,7 +4,8 @@ import { motion } from "framer-motion";
 import { 
   Trophy, Users, Ticket, CreditCard, BarChart3, Settings, 
   Plus, Edit, Trash2, Check, X, LogOut, Menu, ChevronDown,
-  Image, Video, DollarSign, Eye, EyeOff, AlertCircle, MessageCircle, Gift, Banknote
+  Image, Video, DollarSign, Eye, EyeOff, AlertCircle, MessageCircle, Gift, Banknote,
+  FileText, Palette, Download
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { Button } from "../components/ui/button";
@@ -37,6 +38,8 @@ const AdminSidebar = ({ isOpen, setIsOpen }) => {
     { path: "/admin/payments", icon: CreditCard, label: "Pagos" },
     { path: "/admin/sponsors", icon: Gift, label: "Sponsors" },
     { path: "/admin/withdrawals", icon: Banknote, label: "Retiros" },
+    { path: "/admin/reports", icon: FileText, label: "Reportes" },
+    { path: "/admin/content", icon: Palette, label: "Editar Contenido" },
     { path: "/admin/payment-methods", icon: Settings, label: "Métodos de Pago" },
     { path: "/admin/whatsapp", icon: MessageCircle, label: "WhatsApp" },
   ];
