@@ -5,12 +5,14 @@ import { Trophy, Shield, Smartphone, Star, ArrowRight, Menu, X } from "lucide-re
 import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { useAuth } from "../context/AuthContext";
+import { useFrontendContent } from "../context/FrontendContentContext";
 import axios from "axios";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 
 export default function LandingPage() {
   const { user } = useAuth();
+  const { content, loading: contentLoading } = useFrontendContent();
   const [raffles, setRaffles] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -28,11 +30,13 @@ export default function LandingPage() {
   };
 
   const features = [
-    { icon: Trophy, title: "Grandes Premios", desc: "Participa por increíbles premios cada semana" },
-    { icon: Shield, title: "100% Seguro", desc: "Transacciones protegidas y transparentes" },
-    { icon: Smartphone, title: "Desde tu Móvil", desc: "Compra tus números desde cualquier lugar" },
-    { icon: Star, title: "Fácil y Rápido", desc: "Elige tus números y paga en segundos" },
+    { title: content.feature1_title, desc: content.feature1_description },
+    { title: content.feature2_title, desc: content.feature2_description },
+    { title: content.feature3_title, desc: content.feature3_description },
+    { title: content.feature4_title, desc: content.feature4_description },
   ];
+
+  const featureIcons = [Trophy, Shield, Smartphone, Star];
 
   return (
     <div className="min-h-screen bg-background">
