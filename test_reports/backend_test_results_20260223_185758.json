@@ -1,0 +1,129 @@
+{
+  "summary": {
+    "tests_run": 17,
+    "tests_passed": 14,
+    "success_rate": 82.35294117647058,
+    "timestamp": "2026-02-23T18:57:58.813419"
+  },
+  "detailed_results": [
+    {
+      "test": "Admin Registration",
+      "endpoint": "POST /api/auth/register",
+      "success": true,
+      "details": "",
+      "timestamp": "2026-02-23T18:57:55.301853"
+    },
+    {
+      "test": "Forgot Password - Valid Email",
+      "endpoint": "POST /api/auth/forgot-password",
+      "success": true,
+      "details": "Response: Success",
+      "timestamp": "2026-02-23T18:57:55.725436"
+    },
+    {
+      "test": "Forgot Password - Invalid Email Format",
+      "endpoint": "POST /api/auth/forgot-password",
+      "success": true,
+      "details": "Correctly rejected invalid email",
+      "timestamp": "2026-02-23T18:57:55.904431"
+    },
+    {
+      "test": "Reset Password - Invalid Token",
+      "endpoint": "POST /api/auth/reset-password",
+      "success": false,
+      "details": "Should reject invalid token",
+      "timestamp": "2026-02-23T18:57:56.110881"
+    },
+    {
+      "test": "Reset Password - Empty Password",
+      "endpoint": "POST /api/auth/reset-password",
+      "success": true,
+      "details": "Correctly rejected empty password",
+      "timestamp": "2026-02-23T18:57:56.297483"
+    },
+    {
+      "test": "User Editing - Update User Info",
+      "endpoint": "PUT /api/users/67c45a00-15ad-466a-afed-a0f8c80046ea",
+      "success": true,
+      "details": "Successfully updated user information",
+      "timestamp": "2026-02-23T18:57:56.944008"
+    },
+    {
+      "test": "User Editing - Non-existent User",
+      "endpoint": "PUT /api/users/non-existent-id",
+      "success": true,
+      "details": "Correctly rejected non-existent user",
+      "timestamp": "2026-02-23T18:57:57.108081"
+    },
+    {
+      "test": "Excel Report Generation",
+      "endpoint": "GET /api/reports/excel",
+      "success": true,
+      "details": "File size: 7562 bytes",
+      "timestamp": "2026-02-23T18:57:57.302816"
+    },
+    {
+      "test": "PDF Report Generation",
+      "endpoint": "GET /api/reports/pdf",
+      "success": true,
+      "details": "File size: 2181 bytes",
+      "timestamp": "2026-02-23T18:57:57.497332"
+    },
+    {
+      "test": "Report History",
+      "endpoint": "GET /api/reports/history",
+      "success": true,
+      "details": "Found 2 report records",
+      "timestamp": "2026-02-23T18:57:57.646104"
+    },
+    {
+      "test": "Get Frontend Content",
+      "endpoint": "GET /api/frontend/content",
+      "success": true,
+      "details": "Got content with hero_title: Tu Suerte Comienza Aqu\u00ed",
+      "timestamp": "2026-02-23T18:57:57.798408"
+    },
+    {
+      "test": "Update Frontend Content",
+      "endpoint": "PUT /api/frontend/content",
+      "success": true,
+      "details": "Response: Contenido actualizado exitosamente",
+      "timestamp": "2026-02-23T18:57:57.999838"
+    },
+    {
+      "test": "Social Sharing - Get Raffles",
+      "endpoint": "",
+      "success": false,
+      "details": "No raffles available for testing",
+      "timestamp": "2026-02-23T18:57:58.234113"
+    },
+    {
+      "test": "Sponsor Metrics - By Raffle",
+      "endpoint": "GET /api/sponsor/earnings-by-raffle",
+      "success": true,
+      "details": "Got 0 raffle earnings records",
+      "timestamp": "2026-02-23T18:57:58.375883"
+    },
+    {
+      "test": "Sponsor Metrics - By Week",
+      "endpoint": "GET /api/sponsor/earnings-by-week",
+      "success": true,
+      "details": "Got 0 weekly earnings records",
+      "timestamp": "2026-02-23T18:57:58.521942"
+    },
+    {
+      "test": "Sponsor Metrics - By Month",
+      "endpoint": "GET /api/sponsor/earnings-by-month",
+      "success": true,
+      "details": "Got 0 monthly earnings records",
+      "timestamp": "2026-02-23T18:57:58.646100"
+    },
+    {
+      "test": "Top Buyer - Get Raffles",
+      "endpoint": "",
+      "success": false,
+      "details": "No raffles available",
+      "timestamp": "2026-02-23T18:57:58.813099"
+    }
+  ]
+}
