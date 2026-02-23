@@ -372,6 +372,99 @@ export default function SponsorPage() {
           </Card>
         )}
 
+        {/* Advanced Metrics - Earnings by Raffle */}
+        {earningsByRaffle.length > 0 && (
+          <Card className="border-0 shadow-trust mb-8">
+            <CardHeader>
+              <CardTitle className="font-barlow text-lg text-trust-blue uppercase flex items-center gap-2">
+                <Trophy className="w-5 h-5" />
+                Ganancias por Rifa
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {earningsByRaffle.map((raffle, index) => (
+                  <motion.div
+                    key={raffle.raffle_id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition"
+                  >
+                    {raffle.raffle_image && (
+                      <img src={raffle.raffle_image} alt={raffle.raffle_title} className="w-16 h-16 rounded object-cover" />
+                    )}
+                    <div className="flex-1">
+                      <p className="font-medium text-trust-blue">{raffle.raffle_title}</p>
+                      <p className="text-sm text-slate-500">{raffle.sales_count} ventas</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-barlow font-bold text-lg text-success-green">${raffle.total_earnings.toFixed(2)}</p>
+                      <div className="flex gap-2 text-xs">
+                        <span className="text-slate-500">Pendiente: ${raffle.pending_earnings.toFixed(2)}</span>
+                        <span className="text-green-600">Pagado: ${raffle.paid_earnings.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Advanced Metrics - Earnings by Week/Month */}
+        <div className="grid lg:grid-cols-2 gap-6 mb-8">
+          {/* Weekly Breakdown */}
+          {earningsByWeek.length > 0 && (
+            <Card className="border-0 shadow-trust">
+              <CardHeader>
+                <CardTitle className="font-barlow text-lg text-trust-blue uppercase flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  Últimas Semanas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {earningsByWeek.slice(0, 6).map((week, index) => (
+                    <div key={week.week} className="flex justify-between items-center p-3 bg-slate-50 rounded">
+                      <div>
+                        <p className="font-medium text-sm">{week.week}</p>
+                        <p className="text-xs text-slate-500">{week.sales_count} ventas</p>
+                      </div>
+                      <p className="font-barlow font-bold text-success-green">${week.total_earnings.toFixed(2)}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Monthly Breakdown */}
+          {earningsByMonth.length > 0 && (
+            <Card className="border-0 shadow-trust">
+              <CardHeader>
+                <CardTitle className="font-barlow text-lg text-trust-blue uppercase flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5" />
+                  Últimos Meses
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {earningsByMonth.slice(0, 6).map((month, index) => (
+                    <div key={month.month} className="flex justify-between items-center p-3 bg-slate-50 rounded">
+                      <div>
+                        <p className="font-medium text-sm">{month.month}</p>
+                        <p className="text-xs text-slate-500">{month.sales_count} ventas</p>
+                      </div>
+                      <p className="font-barlow font-bold text-success-green">${month.total_earnings.toFixed(2)}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
         {/* How it works */}
         <Card className="border-0 shadow-trust mb-8">
           <CardHeader>
