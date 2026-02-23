@@ -1231,6 +1231,593 @@ Gracias por ser parte de {business_name}. 💙"""
             
             messages.append({
                 "sponsor_id": user["id"],
+
+
+# ============ PASSWORD RECOVERY ============
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=6)
+
+def create_reset_token(email: str) -> str:
+    """Create a password reset token valid for 1 hour"""
+    payload = {
+        "email": email,
+        "type": "password_reset",
+        "exp": datetime.now(timezone.utc) + timedelta(hours=1)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    """Send password reset email"""
+    user = await db.users.find_one({"email": request.email}, {"_id": 0})
+    if not user:
+        # Don't reveal if email exists for security
+        return {"message": "Si el email existe, recibirás un enlace de recuperación"}
+    
+    # Create reset token
+    reset_token = create_reset_token(request.email)
+    
+    # Get business name from config
+    config = await db.business_config.find_one({"type": "main"}, {"_id": 0})
+    business_name = config.get("business_name", "SuerteApp") if config else "SuerteApp"
+    
+    # Get frontend URL from env
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://ventana-proyecto.preview.emergentagent.com')
+    reset_link = f"{frontend_url}/reset-password?token={reset_token}"
+    
+    # Send email
+    if resend.api_key:
+        try:
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #003366;">🔐 Recuperación de Contraseña - {business_name}</h2>
+                <p>Hola <strong>{user['full_name']}</strong>,</p>
+                <p>Recibimos una solicitud para restablecer tu contraseña.</p>
+                
+                <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                    <a href="{reset_link}" 
+                       style="display: inline-block; background: #003366; color: white; 
+                              padding: 12px 30px; text-decoration: none; border-radius: 5px; 
+                              font-weight: bold;">
+                        Restablecer Contraseña
+                    </a>
+                </div>
+                
+                <p style="color: #666; font-size: 14px;">
+                    Este enlace es válido por <strong>1 hora</strong>.
+                </p>
+                <p style="color: #666; font-size: 14px;">
+                    Si no solicitaste este cambio, puedes ignorar este email de forma segura.
+                </p>
+                
+                <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                <p style="color: #999; font-size: 12px;">
+                    {business_name} - Plataforma de Rifas
+                </p>
+            </div>
+            """
+            
+            params = {
+                "from": SENDER_EMAIL,
+                "to": [request.email],
+                "subject": f"Recupera tu contraseña - {business_name}",
+                "html": html_content
+            }
+            
+            await asyncio.to_thread(resend.Emails.send, params)
+            logger.info(f"Password reset email sent to {request.email}")
+        except Exception as e:
+            logger.error(f"Failed to send reset email: {e}")
+            raise HTTPException(status_code=500, detail="Error al enviar el email")
+    
+    return {"message": "Si el email existe, recibirás un enlace de recuperación"}
+
+@api_router.post("/auth/reset-password")
+async def reset_password(request: ResetPasswordRequest):
+    """Reset password using token"""
+    try:
+        payload = jwt.decode(request.token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "password_reset":
+            raise HTTPException(status_code=400, detail="Token inválido")
+        
+        email = payload.get("email")
+        user = await db.users.find_one({"email": email}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+        # Update password
+        new_password_hash = hash_password(request.new_password)
+        await db.users.update_one(
+            {"email": email},
+            {"$set": {"password": new_password_hash}}
+        )
+        
+        logger.info(f"Password reset successful for {email}")
+        return {"message": "Contraseña actualizada exitosamente"}
+        
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="El token ha expirado")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=400, detail="Token inválido")
+
+# ============ USER EDITING (ADMIN) ============
+class UserUpdateRequest(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    whatsapp: Optional[str] = None
+    cedula: Optional[str] = None
+    role: Optional[UserRole] = None
+
+@api_router.put("/users/{user_id}", response_model=UserResponse)
+async def update_user(user_id: str, user_data: UserUpdateRequest, admin: dict = Depends(require_admin)):
+    """Update user information (admin only)"""
+    update_dict = {k: v for k, v in user_data.model_dump().items() if v is not None}
+    
+    if not update_dict:
+        raise HTTPException(status_code=400, detail="No hay datos para actualizar")
+    
+    # Check if email or cedula already exists (if being updated)
+    if "email" in update_dict or "cedula" in update_dict:
+        query_conditions = []
+        if "email" in update_dict:
+            query_conditions.append({"email": update_dict["email"]})
+        if "cedula" in update_dict:
+            query_conditions.append({"cedula": update_dict["cedula"]})
+        
+        existing = await db.users.find_one({
+            "$and": [
+                {"id": {"$ne": user_id}},
+                {"$or": query_conditions}
+            ]
+        })
+        if existing:
+            raise HTTPException(status_code=400, detail="Email o cédula ya están en uso")
+    
+    result = await db.users.find_one_and_update(
+        {"id": user_id},
+        {"$set": update_dict},
+        return_document=True
+    )
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    
+    return {k: v for k, v in result.items() if k not in ["password", "_id"]}
+
+# ============ REPORTS GENERATION ============
+class ReportType(str, Enum):
+    EXCEL = "excel"
+    PDF = "pdf"
+
+class ReportHistory(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    report_type: ReportType
+    generated_by: str
+    generated_by_name: str
+    filename: str
+    created_at: str
+
+async def get_report_data():
+    """Get all data needed for reports"""
+    # Get stats
+    total_users = await db.users.count_documents({})
+    total_raffles = await db.raffles.count_documents({})
+    active_raffles = await db.raffles.count_documents({"status": RaffleStatus.ACTIVE})
+    
+    # Get completed transactions
+    completed_txns = await db.payment_transactions.find(
+        {"status": PaymentStatus.COMPLETED},
+        {"_id": 0}
+    ).to_list(1000)
+    
+    total_revenue = sum(t["amount"] for t in completed_txns)
+    
+    # Group by week
+    week_revenue = {}
+    for txn in completed_txns:
+        created = datetime.fromisoformat(txn["created_at"])
+        week_key = created.strftime("%Y-W%W")
+        week_revenue[week_key] = week_revenue.get(week_key, 0) + txn["amount"]
+    
+    # Group by month
+    month_revenue = {}
+    for txn in completed_txns:
+        created = datetime.fromisoformat(txn["created_at"])
+        month_key = created.strftime("%Y-%m")
+        month_revenue[month_key] = month_revenue.get(month_key, 0) + txn["amount"]
+    
+    # Group by sponsor
+    sponsor_earnings = await db.sponsor_earnings.find({}, {"_id": 0}).to_list(1000)
+    sponsor_totals = {}
+    for earning in sponsor_earnings:
+        sponsor_id = earning["sponsor_id"]
+        if sponsor_id not in sponsor_totals:
+            user = await db.users.find_one({"id": sponsor_id}, {"_id": 0, "password": 0})
+            sponsor_totals[sponsor_id] = {
+                "name": user["full_name"] if user else "Desconocido",
+                "total": 0,
+                "pending": 0,
+                "paid": 0
+            }
+        sponsor_totals[sponsor_id]["total"] += earning["commission_amount"]
+        if earning["status"] == "pending":
+            sponsor_totals[sponsor_id]["pending"] += earning["commission_amount"]
+        elif earning["status"] == "paid":
+            sponsor_totals[sponsor_id]["paid"] += earning["commission_amount"]
+    
+    # Group by user (buyers)
+    user_purchases = {}
+    for txn in completed_txns:
+        user_id = txn["user_id"]
+        if user_id not in user_purchases:
+            user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+            user_purchases[user_id] = {
+                "name": user["full_name"] if user else "Desconocido",
+                "total_spent": 0,
+                "transactions": 0
+            }
+        user_purchases[user_id]["total_spent"] += txn["amount"]
+        user_purchases[user_id]["transactions"] += 1
+    
+    # Group by raffle
+    raffle_sales = {}
+    for txn in completed_txns:
+        raffle_id = txn["raffle_id"]
+        if raffle_id not in raffle_sales:
+            raffle = await db.raffles.find_one({"id": raffle_id}, {"_id": 0})
+            raffle_sales[raffle_id] = {
+                "title": raffle["title"] if raffle else "Desconocida",
+                "revenue": 0,
+                "slots_sold": 0
+            }
+        raffle_sales[raffle_id]["revenue"] += txn["amount"]
+        raffle_sales[raffle_id]["slots_sold"] += len(txn["slot_numbers"])
+    
+    return {
+        "total_users": total_users,
+        "total_raffles": total_raffles,
+        "active_raffles": active_raffles,
+        "total_transactions": len(completed_txns),
+        "total_revenue": total_revenue,
+        "week_revenue": week_revenue,
+        "month_revenue": month_revenue,
+        "sponsor_totals": sponsor_totals,
+        "user_purchases": user_purchases,
+        "raffle_sales": raffle_sales
+    }
+
+@api_router.get("/reports/excel")
+async def generate_excel_report(admin: dict = Depends(require_admin)):
+    """Generate Excel report with all metrics"""
+    data = await get_report_data()
+    
+    # Create workbook
+    wb = Workbook()
+    
+    # Summary sheet
+    ws_summary = wb.active
+    ws_summary.title = "Resumen General"
+    
+    # Header styling
+    header_fill = PatternFill(start_color="003366", end_color="003366", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+    
+    ws_summary['A1'] = "REPORTE GENERAL - SUERTEAPP"
+    ws_summary['A1'].font = Font(size=16, bold=True, color="003366")
+    ws_summary.merge_cells('A1:B1')
+    
+    ws_summary['A3'] = "Métrica"
+    ws_summary['B3'] = "Valor"
+    ws_summary['A3'].fill = header_fill
+    ws_summary['A3'].font = header_font
+    ws_summary['B3'].fill = header_fill
+    ws_summary['B3'].font = header_font
+    
+    summary_data = [
+        ["Total Usuarios", data["total_users"]],
+        ["Total Rifas", data["total_raffles"]],
+        ["Rifas Activas", data["active_raffles"]],
+        ["Transacciones Completadas", data["total_transactions"]],
+        ["Ingresos Totales", f"${data['total_revenue']:.2f}"]
+    ]
+    
+    for idx, row in enumerate(summary_data, start=4):
+        ws_summary[f'A{idx}'] = row[0]
+        ws_summary[f'B{idx}'] = row[1]
+    
+    # Weekly revenue sheet
+    ws_week = wb.create_sheet("Ingresos por Semana")
+    ws_week['A1'] = "Semana"
+    ws_week['B1'] = "Ingresos"
+    ws_week['A1'].fill = header_fill
+    ws_week['A1'].font = header_font
+    ws_week['B1'].fill = header_fill
+    ws_week['B1'].font = header_font
+    
+    for idx, (week, revenue) in enumerate(sorted(data["week_revenue"].items()), start=2):
+        ws_week[f'A{idx}'] = week
+        ws_week[f'B{idx}'] = f"${revenue:.2f}"
+    
+    # Monthly revenue sheet
+    ws_month = wb.create_sheet("Ingresos por Mes")
+    ws_month['A1'] = "Mes"
+    ws_month['B1'] = "Ingresos"
+    ws_month['A1'].fill = header_fill
+    ws_month['A1'].font = header_font
+    ws_month['B1'].fill = header_fill
+    ws_month['B1'].font = header_font
+    
+    for idx, (month, revenue) in enumerate(sorted(data["month_revenue"].items()), start=2):
+        ws_month[f'A{idx}'] = month
+        ws_month[f'B{idx}'] = f"${revenue:.2f}"
+    
+    # Sponsor earnings sheet
+    ws_sponsor = wb.create_sheet("Ganancias por Sponsor")
+    ws_sponsor['A1'] = "Sponsor"
+    ws_sponsor['B1'] = "Total"
+    ws_sponsor['C1'] = "Pendiente"
+    ws_sponsor['D1'] = "Pagado"
+    for col in ['A1', 'B1', 'C1', 'D1']:
+        ws_sponsor[col].fill = header_fill
+        ws_sponsor[col].font = header_font
+    
+    for idx, (sponsor_id, info) in enumerate(data["sponsor_totals"].items(), start=2):
+        ws_sponsor[f'A{idx}'] = info["name"]
+        ws_sponsor[f'B{idx}'] = f"${info['total']:.2f}"
+        ws_sponsor[f'C{idx}'] = f"${info['pending']:.2f}"
+        ws_sponsor[f'D{idx}'] = f"${info['paid']:.2f}"
+    
+    # User purchases sheet
+    ws_users = wb.create_sheet("Compras por Usuario")
+    ws_users['A1'] = "Usuario"
+    ws_users['B1'] = "Total Gastado"
+    ws_users['C1'] = "Transacciones"
+    for col in ['A1', 'B1', 'C1']:
+        ws_users[col].fill = header_fill
+        ws_users[col].font = header_font
+    
+    for idx, (user_id, info) in enumerate(data["user_purchases"].items(), start=2):
+        ws_users[f'A{idx}'] = info["name"]
+        ws_users[f'B{idx}'] = f"${info['total_spent']:.2f}"
+        ws_users[f'C{idx}'] = info["transactions"]
+    
+    # Raffle sales sheet
+    ws_raffles = wb.create_sheet("Ventas por Rifa")
+    ws_raffles['A1'] = "Rifa"
+    ws_raffles['B1'] = "Ingresos"
+    ws_raffles['C1'] = "Casillas Vendidas"
+    for col in ['A1', 'B1', 'C1']:
+        ws_raffles[col].fill = header_fill
+        ws_raffles[col].font = header_font
+    
+    for idx, (raffle_id, info) in enumerate(data["raffle_sales"].items(), start=2):
+        ws_raffles[f'A{idx}'] = info["title"]
+        ws_raffles[f'B{idx}'] = f"${info['revenue']:.2f}"
+        ws_raffles[f'C{idx}'] = info["slots_sold"]
+    
+    # Save to BytesIO
+    excel_buffer = io.BytesIO()
+    wb.save(excel_buffer)
+    excel_buffer.seek(0)
+    
+    # Save report history
+    filename = f"reporte_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.xlsx"
+    report_doc = {
+        "id": str(uuid.uuid4()),
+        "report_type": ReportType.EXCEL,
+        "generated_by": admin["id"],
+        "generated_by_name": admin["full_name"],
+        "filename": filename,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.report_history.insert_one(report_doc)
+    
+    return StreamingResponse(
+        excel_buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@api_router.get("/reports/pdf")
+async def generate_pdf_report(admin: dict = Depends(require_admin)):
+    """Generate PDF report with all metrics"""
+    data = await get_report_data()
+    
+    # Create PDF
+    pdf_buffer = io.BytesIO()
+    doc = SimpleDocTemplate(pdf_buffer, pagesize=letter)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Title
+    title = Paragraph("REPORTE GENERAL - SUERTEAPP", styles['Title'])
+    elements.append(title)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Summary table
+    summary_data = [
+        ['Métrica', 'Valor'],
+        ['Total Usuarios', str(data["total_users"])],
+        ['Total Rifas', str(data["total_raffles"])],
+        ['Rifas Activas', str(data["active_raffles"])],
+        ['Transacciones Completadas', str(data["total_transactions"])],
+        ['Ingresos Totales', f"${data['total_revenue']:.2f}"]
+    ]
+    
+    summary_table = Table(summary_data, colWidths=[3*inch, 2*inch])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#003366')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    elements.append(summary_table)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Weekly revenue
+    elements.append(Paragraph("Ingresos por Semana", styles['Heading2']))
+    week_data = [['Semana', 'Ingresos']]
+    for week, revenue in sorted(data["week_revenue"].items())[:10]:  # Last 10 weeks
+        week_data.append([week, f"${revenue:.2f}"])
+    
+    week_table = Table(week_data, colWidths=[2.5*inch, 2*inch])
+    week_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#003366')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    elements.append(week_table)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Top sponsors
+    elements.append(Paragraph("Top 5 Sponsors", styles['Heading2']))
+    sponsor_data = [['Sponsor', 'Total', 'Pendiente', 'Pagado']]
+    sorted_sponsors = sorted(data["sponsor_totals"].items(), 
+                            key=lambda x: x[1]["total"], reverse=True)[:5]
+    for sponsor_id, info in sorted_sponsors:
+        sponsor_data.append([
+            info["name"][:30],
+            f"${info['total']:.2f}",
+            f"${info['pending']:.2f}",
+            f"${info['paid']:.2f}"
+        ])
+    
+    sponsor_table = Table(sponsor_data, colWidths=[2*inch, 1.5*inch, 1.5*inch, 1.5*inch])
+    sponsor_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#003366')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    elements.append(sponsor_table)
+    
+    # Build PDF
+    doc.build(elements)
+    pdf_buffer.seek(0)
+    
+    # Save report history
+    filename = f"reporte_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.pdf"
+    report_doc = {
+        "id": str(uuid.uuid4()),
+        "report_type": ReportType.PDF,
+        "generated_by": admin["id"],
+        "generated_by_name": admin["full_name"],
+        "filename": filename,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.report_history.insert_one(report_doc)
+    
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+@api_router.get("/reports/history", response_model=List[ReportHistory])
+async def get_report_history(admin: dict = Depends(require_admin)):
+    """Get report generation history"""
+    reports = await db.report_history.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return reports
+
+# ============ FRONTEND CONTENT CMS ============
+class FrontendContentUpdate(BaseModel):
+    hero_title: Optional[str] = None
+    hero_subtitle: Optional[str] = None
+    hero_button_text: Optional[str] = None
+    hero_image_url: Optional[str] = None
+    logo_url: Optional[str] = None
+    primary_color: Optional[str] = None
+    secondary_color: Optional[str] = None
+    feature1_title: Optional[str] = None
+    feature1_description: Optional[str] = None
+    feature2_title: Optional[str] = None
+    feature2_description: Optional[str] = None
+    feature3_title: Optional[str] = None
+    feature3_description: Optional[str] = None
+    feature4_title: Optional[str] = None
+    feature4_description: Optional[str] = None
+
+class FrontendContentResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    hero_title: str
+    hero_subtitle: str
+    hero_button_text: str
+    hero_image_url: str
+    logo_url: str
+    primary_color: str
+    secondary_color: str
+    feature1_title: str
+    feature1_description: str
+    feature2_title: str
+    feature2_description: str
+    feature3_title: str
+    feature3_description: str
+    feature4_title: str
+    feature4_description: str
+    updated_at: str
+
+@api_router.get("/frontend/content", response_model=FrontendContentResponse)
+async def get_frontend_content():
+    """Get current frontend content configuration"""
+    content = await db.frontend_content.find_one({"type": "main"}, {"_id": 0, "type": 0})
+    
+    if not content:
+        # Return default content
+        default_content = {
+            "hero_title": "Tu Suerte Comienza Aquí",
+            "hero_subtitle": "Participa en rifas emocionantes con premios increíbles. Elige tus números de la suerte y gana desde tu móvil.",
+            "hero_button_text": "Participar Ahora",
+            "hero_image_url": "https://images.pexels.com/photos/6612233/pexels-photo-6612233.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+            "logo_url": "https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4",
+            "primary_color": "#003366",
+            "secondary_color": "#28a745",
+            "feature1_title": "Grandes Premios",
+            "feature1_description": "Participa por increíbles premios cada semana",
+            "feature2_title": "100% Seguro",
+            "feature2_description": "Transacciones protegidas y transparentes",
+            "feature3_title": "Desde tu Móvil",
+            "feature3_description": "Compra tus números desde cualquier lugar",
+            "feature4_title": "Fácil y Rápido",
+            "feature4_description": "Elige tus números y paga en segundos",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        # Save default
+        await db.frontend_content.insert_one({**default_content, "type": "main"})
+        return default_content
+    
+    return content
+
+@api_router.put("/frontend/content")
+async def update_frontend_content(content_data: FrontendContentUpdate, admin: dict = Depends(require_admin)):
+    """Update frontend content (admin only)"""
+    update_dict = {k: v for k, v in content_data.model_dump().items() if v is not None}
+    
+    if not update_dict:
+        raise HTTPException(status_code=400, detail="No hay datos para actualizar")
+    
+    update_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.frontend_content.update_one(
+        {"type": "main"},
+        {"$set": update_dict},
+        upsert=True
+    )
+    
+    return {"message": "Contenido actualizado exitosamente"}
+
                 "sponsor_name": user["full_name"],
                 "whatsapp": user["whatsapp"],
                 "total_pending": item["total_pending"],
