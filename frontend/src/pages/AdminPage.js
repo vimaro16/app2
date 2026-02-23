@@ -348,6 +348,78 @@ const UsersManagement = () => {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Edit User Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Usuario</DialogTitle>
+            <DialogDescription>
+              Actualiza la información del usuario
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit_full_name">Nombre Completo</Label>
+              <Input
+                id="edit_full_name"
+                value={editForm.full_name}
+                onChange={(e) => setEditForm({...editForm, full_name: e.target.value})}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_email">Email</Label>
+              <Input
+                id="edit_email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_cedula">Cédula</Label>
+              <Input
+                id="edit_cedula"
+                value={editForm.cedula}
+                onChange={(e) => setEditForm({...editForm, cedula: e.target.value})}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_whatsapp">WhatsApp</Label>
+              <Input
+                id="edit_whatsapp"
+                value={editForm.whatsapp}
+                onChange={(e) => setEditForm({...editForm, whatsapp: e.target.value})}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_role">Rol</Label>
+              <Select value={editForm.role} onValueChange={(value) => setEditForm({...editForm, role: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="editor">Editor</SelectItem>
+                  <SelectItem value="user">Usuario</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit">
+                Guardar Cambios
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
