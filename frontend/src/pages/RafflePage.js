@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { Trophy, ArrowLeft, ShoppingCart, CreditCard, Building2, Check, Loader2, MessageCircle } from "lucide-react";
@@ -10,14 +10,18 @@ import { Badge } from "../components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group";
 import { Label } from "../components/ui/label";
+import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
+import ShareRaffleButton from "../components/ShareRaffleButton";
+import TopBuyerCard from "../components/TopBuyerCard";
 import axios from "axios";
 
 const API_URL = process.env.REACT_APP_BACKEND_URL + "/api";
 
 export default function RafflePage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [raffle, setRaffle] = useState(null);
@@ -28,7 +32,7 @@ export default function RafflePage() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [sponsorCode, setSponsorCode] = useState("");
+  const [sponsorCode, setSponsorCode] = useState(searchParams.get("sponsor") || "");
 
   const fetchRaffle = useCallback(async () => {
     try {
