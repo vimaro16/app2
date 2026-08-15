@@ -19,7 +19,7 @@ export function FrontendContentProvider({ children }) {
     hero_title: "Tu Suerte Comienza Aquí",
     hero_subtitle: "Participa en rifas emocionantes con premios increíbles. Elige tus números de la suerte y gana desde tu móvil.",
     hero_button_text: "Participar Ahora",
-    hero_image_url: "https://images.pexels.com/photos/6612233/pexels-photo-6612233.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+    hero_image_url: "https://fluubxpukqhuiczsqyqr.supabase.co/storage/v1/object/sign/cachuappimg/Landing%20img2.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9kMWExOWM4ZS02ZWZjLTQ5ZjEtYjA2Ni1lMGNkZmVlMmNjMGMiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJjYWNodWFwcGltZy9MYW5kaW5nIGltZzIuanBnIiwic2NvcGUiOiJkb3dubG9hZCIsImlhdCI6MTc4NjgxNjQ0MywiZXhwIjoyMTAyMTc2NDQzfQ.ApdSFFsrIgQ4DfXkK55OsrCL__ckABqahkM7fFomxW0",
     logo_url: "https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4",
     primary_color: "#003366",
     secondary_color: "#28a745",
